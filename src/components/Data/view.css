@@ -1,0 +1,25 @@
+.view {
+  margin-top: 1%;
+  margin-left: 1%;
+}
+
+.dropdown {
+  width: 200px;
+}
+.linkDiv {
+  width: 80%;
+}
+.link {
+  color: black;
+  font-weight: bold;
+  float: right;
+}
+
+.newemp{
+  width:60%;
+  margin-left: 2%;
+  margin-top: 3%;
+}
+.deleteButton{
+  width:30%
+}

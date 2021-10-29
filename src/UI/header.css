@@ -1,0 +1,13 @@
+.headerDiv {
+    background-color: brown;
+    height: 3em;
+    padding-top: 10px;
+  }
+  
+  .headerDiv a {
+    color: white !important;
+   
+    font-weight: bold;
+    margin-left: 2%;
+  }
+  
