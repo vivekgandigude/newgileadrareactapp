@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { AgGridColumn, AgGridReact } from "ag-grid-react";
 import { Link } from "react-router-dom";
 import "ag-grid-community/dist/styles/ag-grid.css";
@@ -8,57 +8,22 @@ import { PrimaryButton } from "@fluentui/react/lib/Button";
 import axios from "axios";
 import GridOverlay from "../../UI/customoverlay";
 
-const ViewMySqlData = () => {
+const ViewFilmData = () => {
   const [dataReady, setDataReady] = useState(false);
   const [rowData, setRowData] = useState([]);
   const [selectedYear, setSelectedYear] = useState("");
+  const [gridApi, setGridApi] = useState("");
   const BASEURL = "http://localhost:8081/api/";
   const [options, setOptions] = useState([{ key: 2021, text: 2021 }]); //;
   //let options = [];
   let years = [];
-  const ref = useRef(null);
 
-  function handleScroll(e) {
-    const cY = window.scrollY;
-    const tbh = ref.current.offsetHeight;
-    const thresh = 1000;
-    if (tbh - cY - thresh < 0) console.log("reached end");
-  }
   const onGridReady = async (params) => {
+    setGridApi(params.api);
     const updateData = (data) => {
-      var dataSource = {
-        rowCount: null,
-        getRows: function (params) {
-          console.log("asking for " + params.startRow + " to " + params.endRow);
-
-          if (params.endRow > 50) {
-            console.log(params.endRow);
-            axios
-              .get(
-                "http://localhost:8080/api/getFilmsWithPagination?page=2&limit=100"
-              )
-              .then((res) => {
-                data.push(res.data);
-              })
-              .catch((err) => {
-                console.log(err);
-              });
-          }
-
-          var rowsThisPage = data.slice(params.startRow, params.endRow);
-          var lastRow = -1;
-          if (data.length <= params.endRow) {
-            lastRow = data.length;
-          }
-          params.successCallback(rowsThisPage, lastRow);
-        },
-      };
-      params.api.setDatasource(dataSource);
+      setRowData(data);
     };
-
-    const resp = await fetch(
-      "http://localhost:8080/api/getFilmsWithPagination?page=1&limit=50"
-    );
+    const resp = await fetch(BASEURL + "getFilms");
     const respData = await resp.json();
     updateData(respData);
 
@@ -97,8 +62,6 @@ const ViewMySqlData = () => {
     if (rowData !== null) {
       setDataReady(true);
     }
-    document.addEventListener("scroll", handleScroll);
-    return () => document.removeEventListener("scroll", handleScroll);
   }, [rowData]);
 
   const onCellClicked = async (params) => {
@@ -163,14 +126,9 @@ const ViewMySqlData = () => {
         <br />
       </div>
       {dataReady && (
-        <div
-          className="ag-theme-alpine"
-          style={{ height: 600, width: 1200 }}
-          ref={ref}
-        >
+        <div className="ag-theme-alpine" style={{ height: 600, width: 1200 }}>
           <AgGridReact
-            //rowData={rowData}
-
+            rowData={rowData}
             frameworkComponents={{
               customLoadingOverlay: GridOverlay,
             }}
@@ -196,13 +154,6 @@ const ViewMySqlData = () => {
                 }
               },
             }}
-            rowBuffer={0}
-            rowSelection={"multiple"}
-            rowModelType={"infinite"}
-            cacheOverflowSize={2}
-            maxConcurrentDatasourceRequests={1}
-            infiniteInitialRowCount={10}
-            maxBlocksInCache={10}
             editType="fullRow"
             onCellClicked={onCellClicked}
             onRowEditingStopped={onRowEditingStopped}
@@ -258,4 +209,4 @@ const actionCellRenderer = (params) => {
   return eGui;
 };
 
-export default ViewMySqlData;
+export default ViewFilmData;

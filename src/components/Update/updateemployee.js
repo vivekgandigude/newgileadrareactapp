@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
-
-import { useSaveEmployeeMutation } from "../../services/api-services";
+import {
+  useGetEmployeeDetailsQuery,
+  useUpdateEmployeeMutation,
+} from "../../services/api-services";
 import { Stack, TextField } from "@fluentui/react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -9,14 +11,17 @@ import * as moment from "moment";
 import { Modal, Button } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-const NewEmployee = ({ handleClose, show, close }) => {
-  const [addEmp, addEmpRespInfo] = useSaveEmployeeMutation();
+import Dropdown from "react-dropdown";
+import "react-dropdown/style.css";
+const UpdateEmployee = ({ item, handleClose, show, close }) => {
+  const empDetails = useGetEmployeeDetailsQuery(item.id);
+  const [updateEmpDetails, respInfo] = useUpdateEmployeeMutation();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [hireDate, setHireDate] = useState("");
   const [dob, setDob] = useState("");
   const [gender, setGender] = useState("M");
-
+  const options = ["M", "F"];
   const formatDate = (date) => {
     console.log(moment(date).format("yyyy-MM-DD"));
     return moment(date).format("yyyy-MM-DD");
@@ -31,37 +36,44 @@ const NewEmployee = ({ handleClose, show, close }) => {
   };
 
   useEffect(() => {
-    if (addEmpRespInfo.isSuccess) {
-      alert("Employee Added");
+    if (empDetails.isSuccess && empDetails.data !== undefined) {
+      setFirstName(empDetails.data[0].first_name);
+      setLastName(empDetails.data[0].last_name);
+      var selectedDate = new Date(empDetails.data[0].HireDate);
+      setHireDate(selectedDate);
+      selectedDate = new Date(empDetails.data[0].birth_date);
+      setDob(selectedDate);
+      setGender(empDetails.data[0].gender);
     }
-  }, [addEmpRespInfo]);
+  }, [empDetails]);
   const SubmitHandler = async () => {
     const empData = {};
-    const min = 5000000;
-    const max = 9000000;
-    const rand = min + Math.random() * (max - min);
+
     try {
       var hireDateFormatted = formatDate(hireDate);
       var dobFormatted = formatDate(dob);
-      empData.empno = Math.round(rand);
+      empData.empno = item.id;
       empData.firstname = firstName;
       empData.lastname = lastName;
       empData.hireDate = hireDateFormatted;
       empData.dob = dobFormatted;
       empData.gender = gender;
       debugger;
-      await addEmp(empData);
-      console.log(addEmpRespInfo);
-
+      await updateEmpDetails(empData);
+      console.log(respInfo);
       handleClose();
     } catch (err) {
       console.log(err);
     }
   };
+  const onGenderSelectionChange = (option) => {
+    const selectedGender = option.value;
+    setGender(selectedGender);
+  };
   return (
     <Modal show={show} onHide={close}>
       <Modal.Header closeButton>
-        <Modal.Title>New Employee</Modal.Title>
+        <Modal.Title>Edit Employee Details </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <div className="newemp">
@@ -85,7 +97,7 @@ const NewEmployee = ({ handleClose, show, close }) => {
                 <label>Hire Date</label>
                 <DatePicker
                   selected={hireDate}
-                  value={hireDate}
+                  // value={hireDate}
                   onChange={(date) => setHireDate(date)}
                   minDate={addYears(new Date(), -30)}
                   maxDate={new Date()}
@@ -103,12 +115,13 @@ const NewEmployee = ({ handleClose, show, close }) => {
                 <div className="dropdown">
                   <label>Select Gender</label>
                   <br />
-                  <select onChange={(e) => setGender(e.target.value)}>
-                    <option value="M" selected>
-                      M
-                    </option>
-                    <option value="F">F</option>
-                  </select>
+                  <Dropdown
+                    options={options}
+                    onChange={onGenderSelectionChange}
+                    value={gender}
+                    selected={gender}
+                    placeholder="Select an option"
+                  />
                 </div>
               </Stack.Item>
             </Stack>
@@ -117,11 +130,11 @@ const NewEmployee = ({ handleClose, show, close }) => {
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={close}>
-          Close
+          Cancel
         </Button>
         <div className="linkButton">
           <Button variant="primary" onClick={SubmitHandler}>
-            Add
+            Update
           </Button>
         </div>
       </Modal.Footer>
@@ -129,4 +142,4 @@ const NewEmployee = ({ handleClose, show, close }) => {
   );
 };
 
-export default NewEmployee;
+export default UpdateEmployee;

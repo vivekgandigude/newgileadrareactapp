@@ -1,21 +1,33 @@
 import React, { useState, useEffect } from "react";
 import { useHistory } from "react-router";
 import { AgGridColumn, AgGridReact } from "ag-grid-react";
-import { Link } from "react-router-dom";
-import axios from "axios";
-import { useUpdateEmployeeMutation } from "../../services/api-services";
+import {
+  useUpdateEmployeeMutation,
+  useDeleteEmployeeMutation,
+} from "../../services/api-services";
 import "ag-grid-community/dist/styles/ag-grid.css";
 import "ag-grid-community/dist/styles/ag-theme-alpine.css";
 import * as moment from "moment";
 import "./view.css";
-
+import ListOperations from "../../services/crud.js";
+import Loading from "react-fullscreen-loading";
+import DeleteModal from "../Modal/deletemodal";
+import NewEmployee from "../Create/newemployee";
+import { Button } from "react-bootstrap";
 const ViewEmployees = () => {
   const history = useHistory();
   const [updateEmp, updateRespInfo] = useUpdateEmployeeMutation();
+  const [delEmp, delRespInfo] = useDeleteEmployeeMutation();
   const [dataReady, setDataReady] = useState(false);
   const [rowData, setRowData] = useState([]);
-  const BASEURL = "http://localhost:8081/api/";
-
+  const [showModal, setShowModal] = useState(false);
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [show, setShow] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [item, setItem] = useState({
+    title: "",
+    id: "",
+  });
   const formatDate = (date) => {
     console.log(moment(date).format("yyyy-MM-DD"));
     return moment(date).format("yyyy-MM-DD");
@@ -24,33 +36,45 @@ const ViewEmployees = () => {
   const onGridReady = async (params) => {
     try {
       const updateData = (data) => {
-        //setRowData(data);
+        data.forEach(function (data, index) {
+          data.id = "R" + (index + 1);
+        });
+
         var dataSource = {
           rowCount: null,
           getRows: function (params) {
             console.log(
               "asking for " + params.startRow + " to " + params.endRow
             );
-            setTimeout(function () {
-              var rowsThisPage = data.slice(params.startRow, params.endRow);
-              var lastRow = -1;
-              if (data.length <= params.endRow) {
-                lastRow = data.length;
-              }
-              params.successCallback(rowsThisPage, lastRow);
-            }, 500);
+
+            var dataAfterSortingAndFiltering = sortAndFilter(
+              data,
+              params.sortModel,
+              params.filterModel
+            );
+            var rowsThisPage = dataAfterSortingAndFiltering.slice(
+              params.startRow,
+              params.endRow
+            );
+            var lastRow = -1;
+            if (dataAfterSortingAndFiltering.length <= params.endRow) {
+              lastRow = dataAfterSortingAndFiltering.length;
+            }
+
+            params.successCallback(rowsThisPage, lastRow);
           },
         };
-
         params.api.setDatasource(dataSource);
       };
-
-      const resp = await fetch(BASEURL + "getEmployees");
-      const respData = await resp.json();
-      updateData(respData);
-    } catch (err) {
-      console.log(err);
-    }
+      try {
+        const listData = await ListOperations.getEmp();
+        updateData(listData);
+        localStorage.setItem("empData", JSON.stringify(listData));
+      } catch (error) {
+        console.log(error);
+        updateData(JSON.parse(localStorage.getItem("empData")));
+      }
+    } catch (err) {}
   };
   const onRowEditingStarted = (params) => {
     params.api.refreshCells({
@@ -71,14 +95,27 @@ const ViewEmployees = () => {
     if (rowData !== null) {
       setDataReady(true);
     }
-    // if (updateRespInfo.isSuccess) {
-    //   alert("Updated");
-    // }
-  }, [rowData]);
+    if (updateRespInfo.isSuccess) {
+      console.log(updateRespInfo);
+      alert("Employee details updated.");
+    }
+  }, [rowData, updateRespInfo]);
 
   const onCellClicked = async (params) => {
     let action;
     try {
+      if (params.column.colId === "actions") {
+        action = params.event.target.dataset.action;
+        if (action === "delete") {
+          //history.push("/employees/delete/" + params.data.emp_no);
+          setShowModal(true);
+          setShow(true);
+          setItem({
+            title: params.data.first_name + " " + params.data.last_name,
+            id: params.data.emp_no,
+          });
+        }
+      }
       if (
         params.column.colId === "action" &&
         params.event.target.dataset.action
@@ -94,11 +131,13 @@ const ViewEmployees = () => {
         }
 
         if (action === "delete") {
-          history.push("/employees/delete/" + params.data.emp_no);
+          //history.push("/employees/delete/" + params.data.emp_no);
+          setShowModal(true);
         }
 
         if (action === "update") {
           params.api.stopEditing(false);
+
           var hireDateFormatted = formatDate(params.data.hire_date);
           var dobFormatted = formatDate(params.data.birth_date);
           const empData = {};
@@ -108,15 +147,8 @@ const ViewEmployees = () => {
           empData.hireDate = hireDateFormatted;
           empData.dob = dobFormatted;
           empData.gender = params.data.gender;
-          console.log(empData);
+
           await updateEmp(empData);
-          // const postData = await axios.post(
-          //   BASEURL + "updateEmployee",
-          //   empData
-          // );
-          // const response = await postData.data;
-          console.log(updateRespInfo);
-          alert("Employee Updated!");
         }
 
         if (action === "cancel") {
@@ -129,102 +161,239 @@ const ViewEmployees = () => {
       console.log(err);
     }
   };
-  const dateValueFormat = (data) => {
-    return moment(data.value).format("MM/DD/yyyy");
+
+  const hideModal = async () => {
+    await delEmp(item.id);
+    setShow(false);
+    window.location.reload();
+  };
+
+  const hideNewModal = async () => {
+    setShowNew(false);
+    window.location.reload();
+  };
+
+  const showNewEmp = () => {
+    setShowNewModal(true);
+    setShowNew(true);
+  };
+  const cancelModal = () => {
+    setShow(false);
+  };
+  const cancelNewModal = () => {
+    setShowNew(false);
   };
   return (
     <div className="view">
       <div>
+        <div>
+          {!dataReady && (
+            <Loading loading={true} background="#D7CEE1" loaderColor="#000" />
+          )}
+        </div>
         <div className="linkDiv">
-          <Link to="/employees/add" className="link">
-            + Add Employee
-          </Link>
+          {/* <Link to="/employees/add" className="link">
+           
+          </Link> */}
+          <Button onClick={showNewEmp}> + Add Employee</Button>
         </div>
       </div>
       <br />
-      <div className="dropdown">
-        <br />
+      <div>
+        <div>
+          {showNewModal && (
+            <NewEmployee
+              show={showNew}
+              handleClose={hideNewModal}
+              close={cancelNewModal}
+            />
+          )}
+        </div>
       </div>
+
       {dataReady && (
         <div className="ag-theme-alpine" style={{ height: 600, width: 1200 }}>
           <AgGridReact
-            //rowData={rowData}
-            onGridReady={onGridReady}
-            paginationPageSize="50"
             defaultColDef={{
               flex: 1,
-              minWidth: 110,
-
-              resizable: true,
+              minWidth: 150,
               sortable: true,
+              resizable: true,
+              floatingFilter: true,
             }}
             components={{
               loadingRenderer: function (params) {
                 if (params.value !== undefined) {
                   return params.value;
                 } else {
-                  return '<img src="https://www.ag-grid.com/example-assets/loading.gif">';
+                  return '<img src="http://www.ag-grid.com/example-assets/loading.gif">';
                 }
               },
             }}
-            rowBuffer={0}
+            //rowBuffer={0}
             rowSelection={"multiple"}
             rowModelType={"infinite"}
             cacheOverflowSize={2}
-            maxConcurrentDatasourceRequests={1}
-            infiniteInitialRowCount={1000}
+            maxConcurrentDatasourceRequests={2}
+            infiniteInitialRowCount={1}
             maxBlocksInCache={10}
+            cacheBlockSize={100}
             editType="fullRow"
             onCellClicked={onCellClicked}
             onRowEditingStopped={onRowEditingStopped}
             onRowEditingStarted={onRowEditingStarted}
+            //  pagination={true}
+            //paginationPageSize={10}
+            //animateRows={true}
+            //onBodyScroll=
+            onGridReady={onGridReady}
           >
             <AgGridColumn
               field="emp_no"
               headerName="ID"
               editable={false}
               sortable={true}
+              filter={true}
+              filterParams={{
+                filterOptions: ["equals"],
+                suppressAndOrCondition: true,
+              }}
             ></AgGridColumn>
             <AgGridColumn
               field="first_name"
               headerName="First Name"
               editable={true}
+              filterParams={{
+                filterOptions: ["equals", "contains"],
+                suppressAndOrCondition: true,
+              }}
               filter={true}
             ></AgGridColumn>
             <AgGridColumn
               field="last_name"
               headerName="Last Name"
               editable={true}
+              filterParams={{
+                filterOptions: ["equals", "contains"],
+                suppressAndOrCondition: true,
+              }}
               filter={true}
             ></AgGridColumn>
             <AgGridColumn
               field="gender"
               headerName="Gender"
               editable={false}
-              filter={true}
             ></AgGridColumn>
             <AgGridColumn
-              field="hire_date"
+              field="HireDate"
               headerName="Hire Date"
               editable={false}
-              cellRenderer={dateValueFormat}
-              filter={true}
+              suppressMenu={true}
             ></AgGridColumn>
 
             <AgGridColumn
               headerName="Action"
-              minWidth="150"
+              minWidth="200"
               cellRenderer={actionCellRenderer}
               editable={false}
               colId="action"
+              suppressMenu={true}
+              sortable={false}
+            ></AgGridColumn>
+            <AgGridColumn
+              cellRenderer={deleteCellRender}
+              editable={false}
+              colId="actions"
+              suppressMenu={true}
+              sortable={false}
             ></AgGridColumn>
           </AgGridReact>
         </div>
       )}
+      <div>
+        {showModal && (
+          <DeleteModal
+            item={item}
+            show={show}
+            handleClose={hideModal}
+            close={cancelModal}
+          />
+        )}
+      </div>
     </div>
   );
 };
+const sortAndFilter = (allOfTheData, sortModel, filterModel) => {
+  return sortData(sortModel, filterData(filterModel, allOfTheData));
+};
+const sortData = (sortModel, data) => {
+  debugger
+  var sortPresent = sortModel && sortModel.length > 0;
+  if (!sortPresent) {
+    return data;
+  }
+  var resultOfSort = data.slice();
+  resultOfSort.sort(function (a, b) {
+    for (var k = 0; k < sortModel.length; k++) {
+      var sortColModel = sortModel[k];
+      var valueA = a[sortColModel.colId];
+      var valueB = b[sortColModel.colId];
+      if (valueA === valueB) {
+        continue;
+      }
+      var sortDirection = sortColModel.sort === "asc" ? 1 : -1;
+      if (valueA > valueB) {
+        return sortDirection;
+      } else {
+        return sortDirection * -1;
+      }
+    }
+    return 0;
+  });
+  return resultOfSort;
+};
+function filterData(filterModel, data) {
+  var filterPresent = filterModel && Object.keys(filterModel).length > 0;
+  if (!filterPresent) {
+    return data;
+  }
+  var resultOfFilter = [];
+  for (var i = 0; i < data.length; i++) {
+    var item = data[i];
 
+    if (filterModel.first_name) {
+      if (
+        item.first_name
+          .toLowerCase()
+          .indexOf(filterModel.first_name.filter.toLowerCase()) < 0
+      ) {
+        continue;
+      }
+    }
+    if (filterModel.last_name) {
+      if (
+        item.last_name
+          .toLowerCase()
+          .indexOf(filterModel.last_name.filter.toLowerCase()) < 0
+      ) {
+        continue;
+      }
+    }
+
+    if (filterModel.emp_no) {
+      var emp_no = item.emp_no;
+      var allowedempno = parseInt(filterModel.emp_no.filter);
+      if (filterModel.emp_no.type === "equals") {
+        if (emp_no !== allowedempno) {
+          continue;
+        }
+      }
+    }
+
+    resultOfFilter.push(item);
+  }
+  return resultOfFilter;
+}
 const actionCellRenderer = (params) => {
   let eGui = document.createElement("div");
 
@@ -236,15 +405,32 @@ const actionCellRenderer = (params) => {
 
   if (isCurrentRowEditing) {
     eGui.innerHTML = `
-    <button  class="action-button update"  data-action="update"> update  </button>
-    <button  class="action-button cancel"  data-action="cancel" > cancel </button>
+    <button  class="btn btn-success"  data-action="update"> UPDATE  </button>
+    <button  class="btn btn-info"  data-action="cancel" > CANCEL </button>
     `;
   } else {
     eGui.innerHTML = `
-    <button class="action-button edit"  data-action="edit" > edit  </button>
-    <button class="action-button delete" data-action="delete" > delete </button>
+    <button class="btn btn-secondary"  data-action="edit" > EDIT  </button>
+    
     `;
+    // eGui.innerHTML = `
+    // <button class="action-button edit"  data-action="edit" > EDIT  </button>
+    // <button class="action-button delete" data-action="delete" > DELETE </button>
+    // `;
   }
+
+  return eGui;
+};
+const deleteCellRender = (params) => {
+  let eGui = document.createElement("div");
+
+  eGui.innerHTML = `
+   <button class="btn btn-warning deleteAnchor" data-action="delete"> DELETE  </button>
+    `;
+
+  //   eGui.innerHTML = `
+  //  <a  class="action-button delete deleteAnchor" data-action="delete">Delete</a>
+  //   `;
 
   return eGui;
 };

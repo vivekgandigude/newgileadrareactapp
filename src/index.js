@@ -5,6 +5,7 @@ import App from "./App";
 
 import { store } from "./redux/store";
 import { Provider } from "react-redux";
+import serviceworker from "./serviceWorker";
 
 ReactDOM.render(
   <Provider store={store}>
@@ -12,3 +13,5 @@ ReactDOM.render(
   </Provider>,
   document.getElementById("root")
 );
+serviceworker();
+console.log('public url: ', process.env.PUBLIC_URL)

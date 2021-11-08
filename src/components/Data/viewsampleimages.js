@@ -1,0 +1,120 @@
+import axios from "axios";
+import { useEffect, useState, useRef } from "react";
+import DataTable from "react-data-table-component";
+import listOperations from "../../services/crud";
+import "./view.css";
+const TOTAL_PAGES = 3;
+const columns = [
+  {
+    name: "First",
+    selector: (row) => row.name.first,
+    sortable: true,
+  },
+  {
+    name: "Last",
+    selector: (row) => row.name.last,
+    sortable: true,
+  },
+];
+const SampleImages = () => {
+  const [loading, setLoading] = useState(true);
+  const [allUsers, setAllUsers] = useState([]);
+  const [pageNum, setPageNum] = useState(1);
+  const [lastElement, setLastElement] = useState(null);
+
+  const observer = useRef(
+    new IntersectionObserver((entries) => {
+      const first = entries[0];
+      if (first.isIntersecting) {
+        setPageNum((no) => no + 1);
+      }
+    })
+  );
+
+  const callUser = async () => {
+    setLoading(true);
+    const response = await listOperations.getAllEmp(pageNum, 10);
+    let all = new Set([...allUsers, ...response.data]);
+    setAllUsers([...all]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (pageNum <= TOTAL_PAGES) {
+      callUser();
+    }
+  }, [pageNum]);
+
+  useEffect(() => {
+    const currentElement = lastElement;
+    const currentObserver = observer.current;
+
+    if (currentElement) {
+      currentObserver.observe(currentElement);
+    }
+
+    return () => {
+      if (currentElement) {
+        currentObserver.unobserve(currentElement);
+      }
+    };
+  }, [lastElement]);
+
+  const UserCard = ({ data }) => {
+    return (
+      <div className="p-4 border border-gray-500 rounded bg-white flex items-center">
+        <div>
+          <img
+            src={data.picture.medium}
+            className="w-16 h-16 rounded-full border-2 border-green-600"
+            alt="user"
+          />
+        </div>
+
+        <div className="ml-3">
+          <p className="text-base font-bold">
+            {data.name.first} {data.name.last}
+          </p>
+          <p className="text-sm text-gray-800">
+            {data.location.city}, {data.location.country}
+          </p>
+          <p className="text-sm text-gray-500 break-all">{data.email}</p>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="mx-44 bg-gray-100 p-6 view">
+      <h1 className="text-3xl text-center mt-4 mb-10">All users</h1>
+
+      <div className="grid grid-cols-3 gap-4">
+        {allUsers.length > 0 &&
+          allUsers.map((user, i) => {
+            return i === allUsers.length - 1 &&
+              !loading &&
+              pageNum <= TOTAL_PAGES ? (
+              <div key={`${user.name.first}-${i}`} ref={setLastElement}>
+                <DataTable
+                  columns={columns}
+                  data={allUsers}
+                  highlightOnHover
+                ></DataTable>
+              </div>
+            ) : (
+              <DataTable
+                columns={columns}
+                data={allUsers}
+                highlightOnHover
+                key={`${user.name.first}-${i}`}
+              ></DataTable>
+            );
+          })}
+      </div>
+      {loading && <p className="text-center">loading...</p>}
+
+      {pageNum - 1 === TOTAL_PAGES && <p className="text-center my-10">♥</p>}
+    </div>
+  );
+};
+export default SampleImages;

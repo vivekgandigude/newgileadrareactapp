@@ -9,6 +9,8 @@ import { Movies } from "./pages/movies";
 import Employees from "./pages/employees";
 import NewEmp from "./pages/newemp";
 import DeleteEmp from "./pages/deleteemp";
+import AllEmployees from './pages/allemployees'
+import Olympics from "./pages/olympics";
 
 function App() {
   return (
@@ -20,8 +22,10 @@ function App() {
         <Route path="/sample" exact component={Sample}></Route>
         <Route path="/movies" exact component={Movies}></Route>
         <Route path="/employees" exact component={Employees}></Route>
+        <Route path="/allemployees" exact component={AllEmployees}></Route>
         <Route path="/employees/add" exact component={NewEmp}></Route>
         <Route path="/employees/delete/:id" exact component={DeleteEmp}></Route>
+        <Route path="/olympics" exact component={Olympics}></Route>
       </Switch>
     </BrowserRouter>
   );

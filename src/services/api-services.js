@@ -12,6 +12,32 @@ export const dataApi = createApi({
         method: "GET",
       }),
     }),
+    getAllEmployees: builder.query({
+      query: (params) => {
+        console.log(params.page, params.limit);
+        return {
+          url: "getAllEmployees?page=" + params.page + "&limit=" + params.limit,
+          method: "GET",
+        };
+      },
+    }),
+    getAllEmployeesBySorting: builder.query({
+      query: (params) => {
+        console.log(params.page, params.limit);
+        return {
+          url:
+            "getAllEmployeesBySorting?page=" +
+            params.page +
+            "&limit=" +
+            params.limit +
+            "&column=" +
+            params.column +
+            "&order=" +
+            params.order,
+          method: "GET",
+        };
+      },
+    }),
     getEmployeeDetails: builder.query({
       query: (id) => {
         console.log("ID w:", id);
@@ -35,7 +61,6 @@ export const dataApi = createApi({
     }),
     updateEmployee: builder.mutation({
       query: (updateListData) => {
-        console.log("hi");
         const { id, ...data } = updateListData;
         console.log(data);
         return {
@@ -62,6 +87,8 @@ export const dataApi = createApi({
 
 export const {
   useGetEmployeesQuery,
+  useGetAllEmployeesQuery,
+  useGetAllEmployeesBySortingQuery,
   useGetEmployeeDetailsQuery,
   useSaveEmployeeMutation,
   useUpdateEmployeeMutation,
