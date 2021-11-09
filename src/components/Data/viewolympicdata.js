@@ -28,89 +28,120 @@ const ViewOlymicsData = () => {
   const [showNew, setShowNew] = useState(false);
   const [searchBox, setSearchBox] = useState("");
   const [gridParams, setGridParams] = useState("");
+  const [hasError, setHasError] = useState(false);
   const [item, setItem] = useState({
     title: "",
     id: "",
   });
 
   const onGridReady = async (params) => {
-    let searchBoxVal = searchBoxRef.current.value;
-    const datasource = {
-      getRows(params) {
-        if (searchBoxVal === "") {
-          fetch(
-            "http://localhost:8081/api/getAllEmployeesBySorting?page=" +
-              page +
-              "&limit=" +
-              LIMIT +
-              " &column=" +
-              column +
-              " &order=" +
-              order,
-            {
-              method: "GET",
-              body: JSON.stringify(params.request),
-              headers: { "Content-Type": "application/json; charset=utf-8" },
-            }
-          )
-            .then((httpResponse) => httpResponse.json())
-            .then((response) => {
-              if (params.endRow >= 100) {
-                page = params.endRow / 100;
-                page++;
+    try {
+      let searchBoxVal = searchBoxRef.current.value;
+      const datasource = {
+        getRows(params) {
+          if (searchBoxVal === "") {
+            fetch(
+              "http://localhost:8081/api/getAllEmployeesBySorting?page=" +
+                page +
+                "&limit=" +
+                LIMIT +
+                " &column=" +
+                column +
+                " &order=" +
+                order,
+              {
+                method: "GET",
+                body: JSON.stringify(params.request),
+                headers: { "Content-Type": "application/json; charset=utf-8" },
               }
-              params.successCallback(response, response.lastRow);
-              localStorage.setItem("employeeData", JSON.stringify(response));
-            })
-            .catch((error) => {
-              console.error(error);
-              params.failCallback();
-            });
-        } else {
-          fetch(
-            "http://localhost:8081/api/getAllEmployeesBySortWithFilter?page=" +
-              page +
-              "&limit=" +
-              LIMIT +
-              " &column=" +
-              column +
-              " &order=" +
-              order +
-              " &filterColumn=first_name " +
-              "&filterText=" +
-              searchBoxVal,
-            {
-              method: "GET",
-              body: JSON.stringify(params.request),
-              headers: { "Content-Type": "application/json; charset=utf-8" },
-            }
-          )
-            .then((httpResponse) => httpResponse.json())
-            .then((response) => {
-              if (params.endRow >= 100) {
-                page = params.endRow / 100;
-                page++;
-              }
-              var lastRow = "";
-              if (response.length < 100) {
-                lastRow = response.length;
-              } else {
-                lastRow = response.lastRow;
-              }
-              params.successCallback(response, lastRow);
-              localStorage.setItem("employeeData", JSON.stringify(response));
-            })
-            .catch((error) => {
-              console.error(error);
-              params.failCallback();
-              
-            });
-        }
-      },
-    };
+            )
+              .then((httpResponse) => httpResponse.json())
+              .then((response) => {
+                if (params.endRow >= 100) {
+                  page = params.endRow / 100;
+                  page++;
+                }
+                params.successCallback(response, response.lastRow);
+                localStorage.setItem("employeeData", JSON.stringify(response));
+              })
+              .catch((error) => {
+                console.error(error);
+                params.failCallback();
+                setHasError(true);
+              });
+          } else {
+            listOperations
+              .geAllEmpBySortWithFilter(
+                page,
+                LIMIT,
+                column,
+                order,
+                "first_name",
+                searchBoxVal
+              )
+              .then((data) => {
+                if (params.endRow >= 100) {
+                  page = params.endRow / 100;
+                  page++;
+                }
+                var lastRow = "";
+                if (data.length < 100) {
+                  lastRow = data.length;
+                } else {
+                  lastRow = data.lastRow;
+                }
+                params.successCallback(data, lastRow);
+                localStorage.setItem("employeeData", JSON.stringify(data));
+              });
 
-    params.api.setDatasource(datasource);
-    setGridParams(params);
+            // fetch(
+            //   "http://localhost:8081/api/getAllEmployeesBySortWithFilter?page=" +
+            //     page +
+            //     "&limit=" +
+            //     LIMIT +
+            //     " &column=" +
+            //     column +
+            //     " &order=" +
+            //     order +
+            //     " &filterColumn=first_name " +
+            //     "&filterText=" +
+            //     searchBoxVal,
+            //   {
+            //     method: "GET",
+            //     body: JSON.stringify(params.request),
+            //     headers: { "Content-Type": "application/json; charset=utf-8" },
+            //   }
+            // )
+            //   .then((httpResponse) => httpResponse.json())
+            //   .then((response) => {
+            //     if (params.endRow >= 100) {
+            //       page = params.endRow / 100;
+            //       page++;
+            //     }
+            //     var lastRow = "";
+            //     if (response.length < 100) {
+            //       lastRow = response.length;
+            //     } else {
+            //       lastRow = response.lastRow;
+            //     }
+            //     params.successCallback(response, lastRow);
+            //     localStorage.setItem("employeeData", JSON.stringify(response));
+            //   })
+            //   .catch((error) => {
+            //     console.error(error);
+            //     params.failCallback();
+            //   });
+          }
+        },
+      };
+
+      params.api.setDatasource(datasource);
+      setGridParams(params);
+      setHasError(false);
+    } catch (err) {
+      console.log(err);
+      setHasError(true);
+    }
   };
   const formatDate = (date) => {
     console.log(moment(date).format("yyyy-MM-DD"));
@@ -212,114 +243,125 @@ const ViewOlymicsData = () => {
   };
 
   const headerClick = async (params) => {
-    var colState = params.columnApi.getColumnState();
-    var sortState = colState.filter(function (s) {
-      return s.sort != null;
-    });
-    page = 1;
-    column = sortState[0].colId;
-    order = sortState[0].sort;
-    console.log(column, order);
-    onGridReady(params);
+    try {
+      var colState = params.columnApi.getColumnState();
+      var sortState = colState.filter(function (s) {
+        return s.sort != null;
+      });
+      page = 1;
+      column = sortState[0].colId;
+      order = sortState[0].sort;
+      console.log(column, order);
+      onGridReady(params);
+    } catch (err) {
+      console.log(err);
+    }
   };
   const onFilterTextBoxChanged = async (event) => {
     setSearchBox(event.target.value);
-
+    page = 1;
     onGridReady(gridParams);
   };
-  return (
-    <div className="view">
-      <div className="paddingDiv">
-        <Button onClick={showNewEmp}> + Add Employee</Button>
+  if (hasError) {
+    return <p>Sorry, Something went wrong!</p>;
+  } else {
+    return (
+      <div className="view">
+        <div className="paddingDiv">
+          <Button onClick={showNewEmp}> + Add Employee</Button>
 
-        <div className="rightDiv">
-          <input
-            ref={searchBoxRef}
-            type="text"
-            id="filter-text-box"
-            placeholder="Search from table..."
-            value={searchBox}
-            onChange={onFilterTextBoxChanged}
-          />
+          <div className="rightDiv">
+            <input
+              ref={searchBoxRef}
+              type="text"
+              id="filter-text-box"
+              placeholder="Search from table..."
+              value={searchBox}
+              onChange={onFilterTextBoxChanged}
+            />
+          </div>
+        </div>
+        <div>
+          {showModal && (
+            <DeleteModal
+              item={item}
+              show={show}
+              handleClose={hideModal}
+              close={cancelModal}
+            />
+          )}
+        </div>
+
+        <div>
+          {showNewModal && (
+            <NewEmployee
+              show={showNew}
+              handleClose={hideNewModal}
+              close={cancelNewModal}
+            />
+          )}
+        </div>
+
+        <div className="ag-theme-alpine" style={{ height: 600, width: 1250 }}>
+          <AgGridReact
+            rowModelType={"infinite"}
+            defaultColDef={{
+              minWidth: 150,
+              sortable: true,
+            }}
+            components={{
+              loadingRenderer: function (params) {
+                if (params.value !== undefined) {
+                  return params.value;
+                } else {
+                  return '<img src="http://www.ag-grid.com/example-assets/loading.gif">';
+                }
+              },
+            }}
+            editType="fullRow"
+            onCellClicked={onCellClicked}
+            onRowEditingStopped={onRowEditingStopped}
+            onRowEditingStarted={onRowEditingStarted}
+            onSortChanged={headerClick}
+            onGridReady={onGridReady}
+          >
+            <AgGridColumn
+              field="emp_no"
+              headerName="Emp ID"
+              minWidth={100}
+              editable={false}
+            ></AgGridColumn>
+            <AgGridColumn
+              field="first_name"
+              headerName="First Name"
+              editable={true}
+              colId="first_name"
+            ></AgGridColumn>
+            <AgGridColumn
+              field="last_name"
+              headerName="Last Name"
+              editable={true}
+            ></AgGridColumn>
+            <AgGridColumn field="gender" headerName="Gender"></AgGridColumn>
+            <AgGridColumn
+              field="HireDate"
+              headerName="Hire Date"
+            ></AgGridColumn>
+
+            <AgGridColumn
+              headerName="Action"
+              minWidth="200"
+              cellRenderer={actionCellRenderer}
+              editable={false}
+              colId="action"
+              suppressMenu={true}
+              sortable={false}
+            ></AgGridColumn>
+          </AgGridReact>
         </div>
       </div>
-      <div>
-        {showModal && (
-          <DeleteModal
-            item={item}
-            show={show}
-            handleClose={hideModal}
-            close={cancelModal}
-          />
-        )}
-      </div>
-
-      <div>
-        {showNewModal && (
-          <NewEmployee
-            show={showNew}
-            handleClose={hideNewModal}
-            close={cancelNewModal}
-          />
-        )}
-      </div>
-
-      <div className="ag-theme-alpine" style={{ height: 600, width: 1250 }}>
-        <AgGridReact
-          rowModelType={"infinite"}
-          defaultColDef={{
-            minWidth: 150,
-            sortable: true,
-          }}
-          components={{
-            loadingRenderer: function (params) {
-              if (params.value !== undefined) {
-                return params.value;
-              } else {
-                return '<img src="http://www.ag-grid.com/example-assets/loading.gif">';
-              }
-            },
-          }}
-          editType="fullRow"
-          onCellClicked={onCellClicked}
-          onRowEditingStopped={onRowEditingStopped}
-          onRowEditingStarted={onRowEditingStarted}
-          onSortChanged={headerClick}
-          onGridReady={onGridReady}
-        >
-          <AgGridColumn
-            field="emp_no"
-            headerName="Emp ID"
-            minWidth={100}
-            editable={false}
-          ></AgGridColumn>
-          <AgGridColumn
-            field="first_name"
-            headerName="First Name"
-            editable={true}
-            colId="first_name"
-          ></AgGridColumn>
-          <AgGridColumn
-            field="last_name"
-            headerName="Last Name"
-            editable={true}
-          ></AgGridColumn>
-          <AgGridColumn field="gender" headerName="Gender"></AgGridColumn>
-          <AgGridColumn field="HireDate" headerName="Hire Date"></AgGridColumn>
-
-          <AgGridColumn
-            headerName="Action"
-            minWidth="200"
-            cellRenderer={actionCellRenderer}
-            editable={false}
-            colId="action"
-            suppressMenu={true}
-            sortable={false}
-          ></AgGridColumn>
-        </AgGridReact>
-      </div>
-    </div>
-  );
+    );
+  }
 };
 
 const actionCellRenderer = (params) => {
