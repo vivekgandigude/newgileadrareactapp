@@ -8,7 +8,7 @@ function Header() {
     <nav className="headerDiv">
       <Link to="/">Home</Link>
 
-      <Link to="/sample">Employees(MySQL)</Link>
+      <Link to="/olympics">Employees(MySQL)</Link>
     </nav>
   );
 }

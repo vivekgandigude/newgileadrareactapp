@@ -12,7 +12,8 @@ import listOperations from "../../services/crud";
 import "ag-grid-community/dist/styles/ag-grid.css";
 import "ag-grid-community/dist/styles/ag-theme-alpine.css";
 import "./view.css";
-
+//import IndexedDBService from "../../services/indexeddb-service";
+import dexieIndexedDb from "../../services/dexie-indexeddb";
 const LIMIT = 100;
 let page = 1;
 let column = "emp_no";
@@ -29,47 +30,61 @@ const ViewOlymicsData = () => {
   const [searchBox, setSearchBox] = useState("");
   const [gridParams, setGridParams] = useState("");
   const [hasError, setHasError] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(false);
   const [item, setItem] = useState({
     title: "",
     id: "",
   });
-
+  // const setTodosFromDatabase = (item) => {
+  //   // IndexedDBService.InitializeDB()
+  //   IndexedDBService.Create(item);
+  // };
+  const fetchData = async () => {
+    const allEmpData = await listOperations.getEmp();
+    dexieIndexedDb.addBulkDataToIndexedDB(allEmpData);
+   
+  };
   const onGridReady = async (params) => {
     try {
       let searchBoxVal = searchBoxRef.current.value;
+      var offset;
       const datasource = {
         getRows(params) {
-          if (searchBoxVal === "") {
-            fetch(
-              "http://localhost:8081/api/getAllEmployeesBySorting?page=" +
-                page +
-                "&limit=" +
-                LIMIT +
-                " &column=" +
-                column +
-                " &order=" +
-                order,
-              {
-                method: "GET",
-                body: JSON.stringify(params.request),
-                headers: { "Content-Type": "application/json; charset=utf-8" },
-              }
-            )
-              .then((httpResponse) => httpResponse.json())
+          if (searchBoxVal === "" && page === 1) {
+            listOperations
+              .geAllEmpBySort(page, LIMIT, column, order)
               .then((response) => {
                 if (params.endRow >= 100) {
                   page = params.endRow / 100;
                   page++;
                 }
                 params.successCallback(response, response.lastRow);
-                localStorage.setItem("employeeData", JSON.stringify(response));
+                setInitialLoad(true);
               })
               .catch((error) => {
                 console.error(error);
                 params.failCallback();
                 setHasError(true);
               });
-          } else {
+              
+          }
+          if (searchBoxVal === "" && page > 1) {
+            try {
+              if (page === 1) offset = 0;
+              else offset = (page - 1) * 100;
+
+              dexieIndexedDb
+                .sortByColumn(offset, LIMIT, column, order)
+                .then((data) => {
+                  params.successCallback(data, data.lastRow);
+                });
+              page++;
+            } catch (error) {
+              console.error(error);
+            }
+          }
+
+          if (searchBoxVal !== "") {
             listOperations
               .geAllEmpBySortWithFilter(
                 page,
@@ -92,45 +107,12 @@ const ViewOlymicsData = () => {
                 }
                 params.successCallback(data, lastRow);
                 localStorage.setItem("employeeData", JSON.stringify(data));
+              })
+              .catch((error) => {
+                console.error(error);
+                params.failCallback();
+                setHasError(true);
               });
-
-            // fetch(
-            //   "http://localhost:8081/api/getAllEmployeesBySortWithFilter?page=" +
-            //     page +
-            //     "&limit=" +
-            //     LIMIT +
-            //     " &column=" +
-            //     column +
-            //     " &order=" +
-            //     order +
-            //     " &filterColumn=first_name " +
-            //     "&filterText=" +
-            //     searchBoxVal,
-            //   {
-            //     method: "GET",
-            //     body: JSON.stringify(params.request),
-            //     headers: { "Content-Type": "application/json; charset=utf-8" },
-            //   }
-            // )
-            //   .then((httpResponse) => httpResponse.json())
-            //   .then((response) => {
-            //     if (params.endRow >= 100) {
-            //       page = params.endRow / 100;
-            //       page++;
-            //     }
-            //     var lastRow = "";
-            //     if (response.length < 100) {
-            //       lastRow = response.length;
-            //     } else {
-            //       lastRow = response.lastRow;
-            //     }
-            //     params.successCallback(response, lastRow);
-            //     localStorage.setItem("employeeData", JSON.stringify(response));
-            //   })
-            //   .catch((error) => {
-            //     console.error(error);
-            //     params.failCallback();
-            //   });
           }
         },
       };
@@ -214,12 +196,13 @@ const ViewOlymicsData = () => {
   useEffect(() => {
     if (updateRespInfo.isSuccess) {
       console.log(updateRespInfo);
-      alert("Employee details updated.");
+      //alert("Employee details updated.");
     }
     if (delRespInfo.isSuccess) {
       console.log(delRespInfo);
-      alert("Deleted Record!");
+      //alert("Deleted Record!");
     }
+    fetchData();
   }, [updateRespInfo, delRespInfo]);
   const hideModal = async () => {
     await delEmp(item.id);
@@ -252,6 +235,7 @@ const ViewOlymicsData = () => {
       column = sortState[0].colId;
       order = sortState[0].sort;
       console.log(column, order);
+      
       onGridReady(params);
     } catch (err) {
       console.log(err);
@@ -319,6 +303,7 @@ const ViewOlymicsData = () => {
               },
             }}
             editType="fullRow"
+            sortingOrder={["asc", "desc"]}
             onCellClicked={onCellClicked}
             onRowEditingStopped={onRowEditingStopped}
             onRowEditingStarted={onRowEditingStarted}

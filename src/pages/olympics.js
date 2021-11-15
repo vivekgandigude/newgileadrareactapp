@@ -6,7 +6,7 @@ const Olympics = () => {
   return (
     <div>
       <ErrorBoundary>
-        <ViewOlymicsData />
+        <ViewOlymicsData />        
       </ErrorBoundary>
     </div>
   );
