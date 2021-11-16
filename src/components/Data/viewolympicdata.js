@@ -76,8 +76,7 @@ const ViewOlymicsData = () => {
             page > 1 &&
             (propertyNames === undefined || propertyNames.length === 0)
           ) {
-            if (page === 1) offset = 0;
-            else offset = (page - 1) * 100;
+            offset = (page - 1) * 100;
             dexieIndexedDb
               .sortByColumn(offset, LIMIT, column, order)
               .then((data) => {
@@ -90,10 +89,10 @@ const ViewOlymicsData = () => {
             page === 1 &&
             (propertyNames === undefined ||
               propertyNames.length === 0 ||
-              sortState !== undefined)
+              sortState !== undefined) &&
+            filterText === ""
           ) {
-            if (page === 1) offset = 0;
-            else offset = (page - 1) * 100;
+            offset = 0;
             dexieIndexedDb
               .sortByColumn(offset, LIMIT, column, order)
               .then((data) => {
@@ -131,34 +130,6 @@ const ViewOlymicsData = () => {
               });
           }
           if (filterText !== "") {
-            // listOperations
-            //   .geAllEmpBySortWithFilter(
-            //     page,
-            //     LIMIT,
-            //     column,
-            //     order,
-            //     filterColumn,
-            //     filterText
-            //   )
-            //   .then((data) => {
-            //     if (params.endRow >= 100) {
-            //       page = params.endRow / 100;
-            //       page++;
-            //     }
-            //     var lastRow = "";
-            //     if (data.length < 100) {
-            //       lastRow = data.length;
-            //     } else {
-            //       lastRow = data.lastRow;
-            //     }
-            //     params.successCallback(data, lastRow);
-
-            //   })
-            //   .catch((error) => {
-            //     console.error(error);
-            //     params.failCallback();
-            //     setHasError(true);
-            //   });
             if (page === 1) offset = 0;
             else offset = (page - 1) * 100;
             dexieIndexedDb
