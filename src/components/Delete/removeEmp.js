@@ -6,7 +6,7 @@ import * as moment from "moment";
 import {
   useDeleteEmployeeMutation,
   useGetEmployeeDetailsQuery,
-} from "../../services/api-services";
+} from "../../services/api.services";
 import "../Data/view.css";
 
 const RemoveEmp = () => {

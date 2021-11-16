@@ -3,17 +3,17 @@ import { AgGridColumn, AgGridReact } from "ag-grid-react";
 import {
   useUpdateEmployeeMutation,
   useDeleteEmployeeMutation,
-} from "../../services/api-services";
+} from "../../services/api.services";
 import DeleteModal from "../Modal/deletemodal";
 import NewEmployee from "../Create/newemployee";
 import { Button } from "react-bootstrap";
 import * as moment from "moment";
-import listOperations from "../../services/crud";
+import listOperations from "../../services/crud.service";
 import "ag-grid-community/dist/styles/ag-grid.css";
 import "ag-grid-community/dist/styles/ag-theme-alpine.css";
 import "./view.css";
 //import IndexedDBService from "../../services/indexeddb-service";
-import dexieIndexedDb from "../../services/dexie-indexeddb";
+import dexieIndexedDb from "../../services/dexie.indexeddb";
 
 const LIMIT = 100;
 let page = 1;
