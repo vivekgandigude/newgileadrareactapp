@@ -14,11 +14,15 @@ import "ag-grid-community/dist/styles/ag-theme-alpine.css";
 import "./view.css";
 //import IndexedDBService from "../../services/indexeddb-service";
 import dexieIndexedDb from "../../services/dexie-indexeddb";
+
 const LIMIT = 100;
 let page = 1;
 let column = "emp_no";
 let order = "desc";
-
+let filterColumn;
+let filterText = "";
+let propertyNames;
+let sortState;
 const ViewOlymicsData = () => {
   const searchBoxRef = useRef();
   const [updateEmp, updateRespInfo] = useUpdateEmployeeMutation();
@@ -30,19 +34,15 @@ const ViewOlymicsData = () => {
   const [searchBox, setSearchBox] = useState("");
   const [gridParams, setGridParams] = useState("");
   const [hasError, setHasError] = useState(false);
-  const [initialLoad, setInitialLoad] = useState(false);
+
   const [item, setItem] = useState({
     title: "",
     id: "",
   });
-  // const setTodosFromDatabase = (item) => {
-  //   // IndexedDBService.InitializeDB()
-  //   IndexedDBService.Create(item);
-  // };
-  const fetchData = async () => {
+
+  const FetchData = async () => {
     const allEmpData = await listOperations.getEmp();
     dexieIndexedDb.addBulkDataToIndexedDB(allEmpData);
-   
   };
   const onGridReady = async (params) => {
     try {
@@ -50,7 +50,12 @@ const ViewOlymicsData = () => {
       var offset;
       const datasource = {
         getRows(params) {
-          if (searchBoxVal === "" && page === 1) {
+          if (
+            searchBoxVal === "" &&
+            page === 1 &&
+            filterText === "" &&
+            sortState === undefined
+          ) {
             listOperations
               .geAllEmpBySort(page, LIMIT, column, order)
               .then((response) => {
@@ -59,31 +64,43 @@ const ViewOlymicsData = () => {
                   page++;
                 }
                 params.successCallback(response, response.lastRow);
-                setInitialLoad(true);
               })
               .catch((error) => {
                 console.error(error);
                 params.failCallback();
                 setHasError(true);
               });
-              
           }
-          if (searchBoxVal === "" && page > 1) {
-            try {
-              if (page === 1) offset = 0;
-              else offset = (page - 1) * 100;
-
-              dexieIndexedDb
-                .sortByColumn(offset, LIMIT, column, order)
-                .then((data) => {
-                  params.successCallback(data, data.lastRow);
-                });
-              page++;
-            } catch (error) {
-              console.error(error);
-            }
+          if (
+            searchBoxVal === "" &&
+            page > 1 &&
+            (propertyNames === undefined || propertyNames.length === 0)
+          ) {
+            if (page === 1) offset = 0;
+            else offset = (page - 1) * 100;
+            dexieIndexedDb
+              .sortByColumn(offset, LIMIT, column, order)
+              .then((data) => {
+                params.successCallback(data, data.lastRow);
+              });
+            page++;
           }
-
+          if (
+            searchBoxVal === "" &&
+            page === 1 &&
+            (propertyNames === undefined ||
+              propertyNames.length === 0 ||
+              sortState !== undefined)
+          ) {
+            if (page === 1) offset = 0;
+            else offset = (page - 1) * 100;
+            dexieIndexedDb
+              .sortByColumn(offset, LIMIT, column, order)
+              .then((data) => {
+                params.successCallback(data, data.lastRow);
+              });
+            page++;
+          }
           if (searchBoxVal !== "") {
             listOperations
               .geAllEmpBySortWithFilter(
@@ -91,7 +108,7 @@ const ViewOlymicsData = () => {
                 LIMIT,
                 column,
                 order,
-                "first_name",
+                filterColumn,
                 searchBoxVal
               )
               .then((data) => {
@@ -106,13 +123,55 @@ const ViewOlymicsData = () => {
                   lastRow = data.lastRow;
                 }
                 params.successCallback(data, lastRow);
-                localStorage.setItem("employeeData", JSON.stringify(data));
               })
               .catch((error) => {
                 console.error(error);
                 params.failCallback();
                 setHasError(true);
               });
+          }
+          if (filterText !== "") {
+            // listOperations
+            //   .geAllEmpBySortWithFilter(
+            //     page,
+            //     LIMIT,
+            //     column,
+            //     order,
+            //     filterColumn,
+            //     filterText
+            //   )
+            //   .then((data) => {
+            //     if (params.endRow >= 100) {
+            //       page = params.endRow / 100;
+            //       page++;
+            //     }
+            //     var lastRow = "";
+            //     if (data.length < 100) {
+            //       lastRow = data.length;
+            //     } else {
+            //       lastRow = data.lastRow;
+            //     }
+            //     params.successCallback(data, lastRow);
+
+            //   })
+            //   .catch((error) => {
+            //     console.error(error);
+            //     params.failCallback();
+            //     setHasError(true);
+            //   });
+            if (page === 1) offset = 0;
+            else offset = (page - 1) * 100;
+            dexieIndexedDb
+              .filterByColumn(page, LIMIT, "", "", filterText, filterColumn)
+              .then((result) => {
+                params.successCallback(result, result.length);
+              })
+              .catch((error) => {
+                console.error(error);
+                params.failCallback();
+                setHasError(true);
+              });
+            page++;
           }
         },
       };
@@ -202,7 +261,7 @@ const ViewOlymicsData = () => {
       console.log(delRespInfo);
       //alert("Deleted Record!");
     }
-    fetchData();
+    FetchData();
   }, [updateRespInfo, delRespInfo]);
   const hideModal = async () => {
     await delEmp(item.id);
@@ -228,20 +287,98 @@ const ViewOlymicsData = () => {
   const headerClick = async (params) => {
     try {
       var colState = params.columnApi.getColumnState();
-      var sortState = colState.filter(function (s) {
+      sortState = colState.filter(function (s) {
         return s.sort != null;
       });
       page = 1;
       column = sortState[0].colId;
       order = sortState[0].sort;
       console.log(column, order);
-      
+
       onGridReady(params);
     } catch (err) {
       console.log(err);
     }
   };
-  const onFilterTextBoxChanged = async (event) => {
+
+  const onColumnFilter = async (params) => {
+    var filterModel = params.api.getFilterModel();
+    const firstNameFilter = params.api.getFilterInstance("first_name");
+    const lastNameFilter = params.api.getFilterInstance("last_name");
+    const genderFilter = params.api.getFilterInstance("gender");
+    const empnoFilter = params.api.getFilterInstance("emp_no");
+    const hiredateFilter = params.api.getFilterInstance("HireDate");
+    let queryColumn = "";
+    let queryText = "";
+
+    if (firstNameFilter.appliedModel !== null) {
+      queryColumn += "first_name";
+      queryText += firstNameFilter.appliedModel.filter + ",";
+    }
+    if (lastNameFilter.appliedModel !== null) {
+      queryColumn += "+last_name";
+      queryText += lastNameFilter.appliedModel.filter + ",";
+    }
+    if (genderFilter.appliedModel !== null) {
+      queryColumn += "+gender";
+      queryText += genderFilter.appliedModel.filter + ",";
+    }
+    if (hiredateFilter.appliedModel !== null) {
+      queryColumn += "+hire_date";
+      queryText += hiredateFilter.appliedModel.filter + ",";
+    }
+    if (empnoFilter.appliedModel !== null) {
+      queryColumn += "+emp_no";
+      queryText += empnoFilter.appliedModel.filter + ",";
+    }
+    queryText = queryText.replace(/,\s*$/, "");
+    console.log(queryColumn, queryText);
+    //firstNameFilter.appliedModel.filter=""
+    propertyNames = Object.keys(filterModel);
+    page = 1;
+    if (propertyNames.length > 0) {
+      switch (propertyNames[propertyNames.length - 1]) {
+        case "first_name":
+          filterColumn = "first_name";
+          filterText = filterModel.first_name.filter;
+          break;
+        case "last_name":
+          filterColumn = "last_name";
+          filterText = filterModel.last_name.filter;
+          break;
+        case "emp_no":
+          filterColumn = "emp_no";
+          filterText = filterModel.emp_no.filter;
+          break;
+        case "gender":
+          filterColumn = "gender";
+          filterText = filterModel.gender.filter;
+          break;
+        default:
+          break;
+      }
+      console.log(filterColumn);
+      console.log(filterText);
+    } else {
+      filterColumn = "";
+      filterText = "";
+    }
+    // const searchData = await dexieIndexedDb.filterByColumn(
+    //   page,
+    //   100,
+    //   "first_name",
+    //   "asc",
+    //   filterText,
+    //   filterColumn
+    // );
+    // const searchData = await dexieIndexedDb.getTableData(
+    //   1,
+    //   100,
+    //   filterText,
+    //   "first_name"
+    // );
+  };
+  const onSearchBoxChange = async (event) => {
     setSearchBox(event.target.value);
     page = 1;
     onGridReady(gridParams);
@@ -261,7 +398,7 @@ const ViewOlymicsData = () => {
               id="filter-text-box"
               placeholder="Search from table..."
               value={searchBox}
-              onChange={onFilterTextBoxChanged}
+              onChange={onSearchBoxChange}
             />
           </div>
         </div>
@@ -292,6 +429,8 @@ const ViewOlymicsData = () => {
             defaultColDef={{
               minWidth: 150,
               sortable: true,
+              filter: true,
+              floatingFilter: true,
             }}
             components={{
               loadingRenderer: function (params) {
@@ -309,6 +448,8 @@ const ViewOlymicsData = () => {
             onRowEditingStarted={onRowEditingStarted}
             onSortChanged={headerClick}
             onGridReady={onGridReady}
+            // onFilterTextBoxChanged={onColumnFilter}
+            onFilterChanged={onColumnFilter}
           >
             <AgGridColumn
               field="emp_no"
@@ -321,6 +462,10 @@ const ViewOlymicsData = () => {
               headerName="First Name"
               editable={true}
               colId="first_name"
+              filterParams={{
+                filterOptions: ["equals", "contains"],
+                suppressAndOrCondition: true,
+              }}
             ></AgGridColumn>
             <AgGridColumn
               field="last_name"
@@ -341,6 +486,7 @@ const ViewOlymicsData = () => {
               colId="action"
               suppressMenu={true}
               sortable={false}
+              filter={false}
             ></AgGridColumn>
           </AgGridReact>
         </div>
