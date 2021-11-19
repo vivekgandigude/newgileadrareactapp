@@ -135,7 +135,7 @@ const ViewOlymicsData = () => {
             dexieIndexedDb
               .filterByColumn(page, LIMIT, "", "", filterText, filterColumn)
               .then((result) => {
-                params.successCallback(result, result.length);
+                params.successCallback(result, result.lastRow);
               })
               .catch((error) => {
                 console.error(error);
@@ -334,20 +334,6 @@ const ViewOlymicsData = () => {
       filterColumn = "";
       filterText = "";
     }
-    // const searchData = await dexieIndexedDb.filterByColumn(
-    //   page,
-    //   100,
-    //   "first_name",
-    //   "asc",
-    //   filterText,
-    //   filterColumn
-    // );
-    // const searchData = await dexieIndexedDb.getTableData(
-    //   1,
-    //   100,
-    //   filterText,
-    //   "first_name"
-    // );
   };
   const onSearchBoxChange = async (event) => {
     setSearchBox(event.target.value);

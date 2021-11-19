@@ -59,12 +59,39 @@ export const dataApi = createApi({
         };
       },
     }),
+    addSalesRecord: builder.mutation({
+      query: (salesrecord) => {
+        console.log(salesrecord);
+        return {
+          url: `createListItem`,
+          method: "POST",
+          body: salesrecord,
+          headers: {
+            "Content-type": "application/json; charset=UTF-8",
+          },
+        };
+      },
+    }),
     updateEmployee: builder.mutation({
       query: (updateListData) => {
         const { id, ...data } = updateListData;
         console.log(data);
         return {
           url: `updateEmployee?id=${updateListData.id}`,
+          method: "POST",
+          body: updateListData,
+          headers: {
+            "Content-type": "application/json; charset=UTF-8",
+          },
+        };
+      },
+    }),
+    updateSalesRecord: builder.mutation({
+      query: (updateListData) => {
+        const { id, ...data } = updateListData;
+        console.log(data);
+        return {
+          url: `updateListItem?id=${updateListData.id}`,
           method: "POST",
           body: updateListData,
           headers: {
@@ -82,6 +109,15 @@ export const dataApi = createApi({
         };
       },
     }),
+    deleteSalesRecord: builder.mutation({
+      query: (id) => {
+        console.log("Delete ID:", id);
+        return {
+          url: `deleteListItem?id=${id}`,
+          method: "DELETE",
+        };
+      },
+    }),
   }),
 });
 
@@ -93,4 +129,7 @@ export const {
   useSaveEmployeeMutation,
   useUpdateEmployeeMutation,
   useDeleteEmployeeMutation,
+  useAddSalesRecordMutation,
+  useUpdateSalesRecordMutation,
+  useDeleteSalesRecordMutation,
 } = dataApi;

@@ -6,6 +6,30 @@ class ListOperations {
     const respData = await resp.data;
     return respData;
   };
+  getAllSalesData = async () => {
+    const resp = await axios.get(BASEURL + "getAllTestListItems");
+    const respData = await resp.data;
+    return respData;
+  };
+  getSalesData = async (limit) => {
+    const resp = await axios.get(
+      BASEURL + "getAllTestListItems?limit=" + limit
+    );
+    const respData = await resp.data;
+    return respData;
+  };
+  getNextSalesData = async (pid, limit) => {
+    const resp = await axios.get(
+      BASEURL + "getNextListItems?pid=" + pid + "&top=" + limit
+    );
+    const respData = await resp.data;
+    return respData;
+  };
+  getListItemCount = async () => {
+    const resp = await axios.get(BASEURL + "getListItemCount");
+    const respData = await resp.data;
+    return respData;
+  };
   getEmpDetails = async (id) => {
     const resp = await axios.get(BASEURL + "getEmployeeDetails?id=" + id);
     const respData = await resp.data;
@@ -54,8 +78,7 @@ class ListOperations {
         "&order=" +
         order +
         "&filterColumn=" +
-        filterColumn
-        +
+        filterColumn +
         "&filterText=" +
         filterText
     );

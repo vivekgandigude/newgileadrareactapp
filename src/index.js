@@ -14,5 +14,5 @@ ReactDOM.render(
   document.getElementById("root")
 );
 
-//serviceworker();
+serviceworker();
 //console.log('public url: ', process.env.PUBLIC_URL)
